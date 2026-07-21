@@ -1,13 +1,18 @@
-const express = require("express");
-const morgan = require("morgan");
-const helmet = require("helmet");
-const compression = require("compression");
+import express from "express";
+import morgan from "morgan";
+import helmet from "helmet";
+import compression from "compression";
+import "./dbs/init.mongodb.js";
+import { checkOverload } from "./helpers/check.connect.js";
+
 const app = express();
 
 // middlewares
 app.use(morgan("dev"));
 app.use(helmet());
 app.use(compression());
+// db
+checkOverload();
 
 // init router
 app.get("/", (req, res, next) => {
@@ -16,4 +21,4 @@ app.get("/", (req, res, next) => {
   });
 });
 
-module.exports = app;
+export default app;
