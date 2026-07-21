@@ -1,8 +1,10 @@
 "use strict";
 
 import mongoose from "mongoose";
+import config from "../configs/config.db.js";
 
-const connectString = `mongodb://localhost:27017/shopDEV`;
+const { host, port, name } = config.db;
+const connectString = `mongodb://${host}:${port}/${name}`;
 
 class Database {
   constructor() {
