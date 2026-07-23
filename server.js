@@ -9,6 +9,11 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+let shuttingDown = false;
 process.on("SIGINT", () => {
-  server.close(() => console.log("Close server"));
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log("Close server");
+  server.close();
+  process.exit(0);
 });
