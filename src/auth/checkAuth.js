@@ -1,0 +1,42 @@
+"use strict";
+
+import { findById } from "../services/apiKey.services.js";
+import { AuthFailureError, ForbiddenError } from "../core/error.response.js";
+
+const HEADER = {
+  APIKEY: "x-api-key",
+  AUTHORIZATION: "authorization",
+};
+
+export const asyncHandle = (fn) => {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next);
+  };
+};
+
+export const apiKey = asyncHandle(async (req, res, next) => {
+  const key = req.header(HEADER.APIKEY)?.toString();
+  if (!key) throw new AuthFailureError("Forbidden Error");
+
+  // check object key
+  const objectKey = await findById(key);
+  if (!objectKey) throw new AuthFailureError("Forbidden Error");
+
+  req.objectKey = objectKey;
+  return next();
+});
+
+export const checkPermissions = (permission) => {
+  return (req, res, next) => {
+    if (!req.objectKey.permissions) {
+      throw new ForbiddenError("Permission denied");
+    }
+
+    const invalidPremission = req.objectKey.permissions.includes(permission);
+    if (!invalidPremission) {
+      throw new ForbiddenError("Permission denied");
+    }
+
+    return next();
+  };
+};
