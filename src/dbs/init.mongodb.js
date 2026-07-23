@@ -2,6 +2,7 @@
 
 import mongoose from "mongoose";
 import config from "../configs/config.db.js";
+import initApiKey from "../configs/init.apikey.js";
 
 const { host, port, name } = config.db;
 const connectString = `mongodb://${host}:${port}/${name}`;
@@ -21,7 +22,10 @@ class Database {
       .connect(connectString, {
         maxPoolSize: 50,
       })
-      .then((_) => console.log(`Connected Mongodb Success`))
+      .then((_) => {
+        console.log(`Connected Mongodb Success`);
+        return initApiKey();
+      })
       .catch((err) => console.log(`Error Connect!`));
   }
 
