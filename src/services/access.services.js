@@ -7,15 +7,64 @@ import KeyTokenService from "./keyToken.services.js";
 import { createTokenPair } from "../auth/authUtils.js";
 import { RoleShop } from "../common/constant.js";
 import getInfoData from "../utils/index.js";
-import { BadRequestError } from "../core/error.response.js";
+import {
+  AuthFailureError,
+  BadRequestError,
+  ConflictRequestError,
+  InternalServerError,
+} from "../core/error.response.js";
+import { findByEmail } from "./shop.services.js";
+
+const SALT_ROUNDS = 10;
+const SHOP_PUBLIC_FIELDS = ["_id", "name", "email"];
+
+const generateKeyPair = () =>
+  crypto.generateKeyPairSync("rsa", {
+    modulusLength: 4096,
+    publicKeyEncoding: { type: "pkcs1", format: "pem" },
+    privateKeyEncoding: { type: "pkcs1", format: "pem" },
+  });
+
+// tạo cặp key mới, ký AT/RT và lưu publicKey + refreshToken cho shop
+const issueTokens = async (shop) => {
+  const { publicKey, privateKey } = generateKeyPair();
+
+  const tokens = await createTokenPair(
+    { userId: shop._id, email: shop.email },
+    publicKey,
+    privateKey,
+  );
+
+  const savedPublicKey = await KeyTokenService.createKeyToken({
+    userId: shop._id,
+    publicKey,
+    refreshToken: tokens.refreshToken,
+  });
+  if (!savedPublicKey) {
+    throw new InternalServerError("Error creating key token");
+  }
+
+  return tokens;
+};
+
+const buildAuthResult = async (shop) => ({
+  shop: getInfoData({ fields: SHOP_PUBLIC_FIELDS, object: shop }),
+  tokens: await issueTokens(shop),
+});
 
 class AccessService {
+  /*
+  1. Check email chưa tồn tại
+  2. Hash password, tạo shop
+  3. Cấp token
+  */
   signUp = async ({ name, email, password }) => {
-    const hodelShop = await shopModel.findOne({ email }).lean();
-    if (hodelShop)
-      throw new BadRequestError("Error: Shop already registered !");
+    const holderShop = await findByEmail({ email });
+    if (holderShop) {
+      throw new ConflictRequestError("Error: Shop already registered !");
+    }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const newShop = await shopModel.create({
       name,
       email,
@@ -23,46 +72,22 @@ class AccessService {
       roles: [RoleShop.SHOP],
     });
 
-    // create key public / private key
-    const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
-      modulusLength: 4096,
-      publicKeyEncoding: {
-        type: "pkcs1",
-        format: "pem",
-      },
-      privateKeyEncoding: {
-        type: "pkcs1",
-        format: "pem",
-      },
-    });
+    return buildAuthResult(newShop);
+  };
 
-    const publicKeyString = await KeyTokenService.createKeyToken({
-      userId: newShop._id,
-      publicKey,
-    });
+  /*
+  1. Check email tồn tại
+  2. Match password
+  3. Cấp token
+  */
+  login = async ({ email, password }) => {
+    const foundShop = await findByEmail({ email });
+    if (!foundShop) throw new BadRequestError("Shop not registered");
 
-    if (!publicKeyString) {
-      throw new BadRequestError("Error creating key token");
-    }
+    const match = await bcrypt.compare(password, foundShop.password);
+    if (!match) throw new AuthFailureError("Authentication Error");
 
-    const token = await createTokenPair(
-      { userId: newShop._id, email },
-      publicKeyString,
-      privateKey,
-    );
-
-    console.log(`token created success::`, token);
-
-    return {
-      code: 201,
-      metadata: {
-        shop: getInfoData({
-          fields: ["_id", "name", "email"],
-          object: newShop,
-        }),
-        tokens: token,
-      },
-    };
+    return buildAuthResult(foundShop);
   };
 }
 

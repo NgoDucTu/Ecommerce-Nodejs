@@ -16,11 +16,11 @@ export const asyncHandle = (fn) => {
 
 export const apiKey = asyncHandle(async (req, res, next) => {
   const key = req.header(HEADER.APIKEY)?.toString();
-  if (!key) throw new AuthFailureError("Forbidden Error");
+  if (!key) throw new AuthFailureError("Invalid API key");
 
   // check object key
   const objectKey = await findById(key);
-  if (!objectKey) throw new AuthFailureError("Forbidden Error");
+  if (!objectKey) throw new AuthFailureError("Invalid API key");
 
   req.objectKey = objectKey;
   return next();

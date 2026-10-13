@@ -3,17 +3,23 @@
 import keytokenModel from "../models/keytoken.model.js";
 
 class KeyTokenService {
-  createKeyToken = async ({ userId, publicKey }) => {
-    try {
-      const publicKeyString = publicKey.toString();
-      const tokens = await keytokenModel.create({
-        user: userId,
-        publicKey: publicKeyString,
-      });
-      return tokens ? tokens.publicKey : null;
-    } catch (error) {
-      return error;
-    }
+  // mỗi shop chỉ có 1 bản ghi key: tạo mới hoặc ghi đè
+  createKeyToken = async ({ userId, publicKey, refreshToken }) => {
+    const filter = { user: userId },
+      update = {
+        publicKey,
+        refreshTokensUsed: [],
+        refreshToken,
+      },
+      options = { upsert: true, new: true };
+
+    const tokens = await keytokenModel.findOneAndUpdate(
+      filter,
+      update,
+      options,
+    );
+
+    return tokens ? tokens.publicKey : null;
   };
 }
 
