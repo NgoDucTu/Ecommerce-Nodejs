@@ -89,6 +89,12 @@ class AccessService {
 
     return buildAuthResult(foundShop);
   };
+
+  logout = async ({ keyStore }) => {
+    const delKey = await KeyTokenService.removeKeyById(keyStore._id);
+    console.log("Delete key", keyStore);
+    return delKey;
+  };
 }
 
 export default new AccessService();

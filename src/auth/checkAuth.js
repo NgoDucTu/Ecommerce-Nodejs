@@ -2,16 +2,11 @@
 
 import { findById } from "../services/apiKey.services.js";
 import { AuthFailureError, ForbiddenError } from "../core/error.response.js";
+import { asyncHandle } from "../helpers/asyncHandler.js";
 
 const HEADER = {
   APIKEY: "x-api-key",
   AUTHORIZATION: "authorization",
-};
-
-export const asyncHandle = (fn) => {
-  return (req, res, next) => {
-    fn(req, res, next).catch(next);
-  };
 };
 
 export const apiKey = asyncHandle(async (req, res, next) => {
